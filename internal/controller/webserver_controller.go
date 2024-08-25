@@ -19,10 +19,14 @@ package controller
 import (
 	"context"
 
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	webv1alpha1 "github.com/lab408/nodejs-operator-example/api/v1alpha1"
 )
@@ -47,11 +51,70 @@ type WebServerReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *WebServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	// Fetch the WebServer instance
+	webserver := &webv1alpha1.WebServer{}
+	err := r.Get(ctx, req.NamespacedName, webserver)
+	if err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	// Define a new Deployment for the WebServer
+	dep := r.deploymentForWebServer(webserver)
+
+	// Check if the Deployment already exists, if not create a new one
+	found := &appsv1.Deployment{}
+	err = r.Get(ctx, types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
+	if err != nil && errors.IsNotFound(err) {
+		err = r.Create(ctx, dep)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	} else if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Ensure the deployment size is the same as the spec
+	size := webserver.Spec.Size
+	if *found.Spec.Replicas != size {
+		found.Spec.Replicas = &size
+		err = r.Update(ctx, found)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *WebServerReconciler) deploymentForWebServer(ws *webv1alpha1.WebServer) *appsv1.Deployment {
+	labels := map[string]string{"app": "webserver", "webserver_cr": ws.Name}
+	return &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ws.Name,
+			Namespace: ws.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &ws.Spec.Size,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: labels,
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{
+						Name:  "webserver",
+						Image: ws.Spec.Image,
+						Ports: []corev1.ContainerPort{{
+							ContainerPort: 80,
+						}},
+					}},
+				},
+			},
+		},
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

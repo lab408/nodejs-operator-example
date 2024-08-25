@@ -29,13 +29,19 @@ type WebServerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of WebServer. Edit webserver_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Foo string `json:"foo,omitempty"`
+
+	// Size of the deployment
+	Size int32 `json:"size"`
+	// Image to use for the web server
+	Image string `json:"image"`
 }
 
 // WebServerStatus defines the observed state of WebServer
 type WebServerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Nodes []string `json:"nodes"`
 }
 
 //+kubebuilder:object:root=true
