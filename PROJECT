@@ -10,4 +10,14 @@ plugins:
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: nodejs-operator-example
 repo: github.com/lab408/nodejs-operator-example
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: example.com
+  group: web
+  kind: WebServer
+  path: github.com/lab408/nodejs-operator-example/api/v1alpha1
+  version: v1alpha1
 version: "3"

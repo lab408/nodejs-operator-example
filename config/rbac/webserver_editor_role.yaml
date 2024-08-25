@@ -1,0 +1,27 @@
+# permissions for end users to edit webservers.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: nodejs-operator-example
+    app.kubernetes.io/managed-by: kustomize
+  name: webserver-editor-role
+rules:
+- apiGroups:
+  - web.example.com
+  resources:
+  - webservers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - web.example.com
+  resources:
+  - webservers/status
+  verbs:
+  - get
